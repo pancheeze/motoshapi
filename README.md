@@ -32,5 +32,5 @@ Marc Angelo Canillas
 Ralph Mathew Cawilan
 John Carlo Marasigan 
 
-we are from BSIT 2-2 po. 
+we are from BSIT 3-2 po. 
 
