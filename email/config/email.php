@@ -122,7 +122,6 @@ function sendWelcomeEmail($email, $username) {
                     <li>Manage your profile and preferences</li>
                 </ul>
                 <p>If you have any questions, feel free to contact our support team.</p>
-                <a href='http://localhost/motoshapi/products.php' class='button'>Start Shopping</a>
             </div>
             <div class='footer'>
                 <p>&copy; 2026 Motoshapi. All rights reserved.</p>
@@ -133,7 +132,7 @@ function sendWelcomeEmail($email, $username) {
     </html>
     ";
 
-    $altBody = "Welcome to Motoshapi, {$username}!\n\nThank you for registering with us. Your account has been created successfully.\n\nVisit us at: http://localhost/motoshapi/products.php";
+    $altBody = "Welcome to Motoshapi, {$username}!\n\nThank you for registering with us. Your account has been created successfully.";
 
     $result = sendEmail($email, $subject, $body, $altBody);
     return $result === true;
