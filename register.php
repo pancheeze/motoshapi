@@ -14,7 +14,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'];
     $confirm_password = $_POST['confirm_password'];
 
-    if ($password !== $confirm_password) {
+    if (strlen($password) < 6) {
+        $error = 'Password must be at least 6 characters long.';
+    } elseif ($password !== $confirm_password) {
         $error = 'Passwords do not match.';
     } else {
         // Check if username or email exists
@@ -69,11 +71,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 <div style="margin-bottom: var(--spacing-lg);">
                     <label for="password" style="display: block; margin-bottom: var(--spacing-sm); font-weight: 600; color: var(--text-primary);">Password</label>
-                    <input type="password" class="form-control" id="password" name="password" required style="background: var(--bg-primary); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: var(--radius-md); width: 100%; font-size: 1rem;">
+                    <input type="password" class="form-control" id="password" name="password" minlength="6" required style="background: var(--bg-primary); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: var(--radius-md); width: 100%; font-size: 1rem;">
                 </div>
                 <div style="margin-bottom: var(--spacing-xl);">
                     <label for="confirm_password" style="display: block; margin-bottom: var(--spacing-sm); font-weight: 600; color: var(--text-primary);">Confirm Password</label>
-                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" required style="background: var(--bg-primary); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: var(--radius-md); width: 100%; font-size: 1rem;">
+                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" minlength="6" required style="background: var(--bg-primary); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: var(--radius-md); width: 100%; font-size: 1rem;">
                 </div>
                 <button type="submit" class="modern-btn modern-btn-primary" style="width: 100%; padding: 0.875rem; font-size: 1.0625rem;">Create Account</button>
             </form>
