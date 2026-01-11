@@ -72,8 +72,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 <button type="submit" class="modern-btn modern-btn-primary" style="width: 100%; padding: 0.875rem; font-size: 1.0625rem;">Sign In</button>
             </form>
-            
-            <div style="text-align: center; margin-top: var(--spacing-xl); padding-top: var(--spacing-lg); border-top: 1px solid var(--border-primary);">
+
+            <div style="text-align: center; margin-top: var(--spacing-lg);">
+                <a href="email/pages/forgot_password.php" style="color: var(--accent-primary); text-decoration: none; font-weight: 500; font-size: 0.875rem;">Forgot Password?</a>
+            </div>
+
+            <div style="text-align: center; margin-top: var(--spacing-lg); padding-top: var(--spacing-lg); border-top: 1px solid var(--border-primary);">
                 <span style="color: var(--text-secondary);">Don't have an account? </span>
                 <a href="register.php" style="color: var(--accent-primary); text-decoration: none; font-weight: 600;">Create Account</a>
             </div>

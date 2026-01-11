@@ -1,0 +1,8 @@
+# Local secrets / environment
+.env
+email/config/email.local.php
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/

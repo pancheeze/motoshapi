@@ -58,6 +58,18 @@ try {
         echo "<p>Users table needs 'updated_at' column</p>";
     }
     
+    $stmt = $conn->query("SHOW COLUMNS FROM users LIKE 'reset_token'");
+    if ($stmt->rowCount() == 0) {
+        $migration_needed = true;
+        echo "<p>Users table needs 'reset_token' column</p>";
+    }
+    
+    $stmt = $conn->query("SHOW COLUMNS FROM users LIKE 'reset_token_expires'");
+    if ($stmt->rowCount() == 0) {
+        $migration_needed = true;
+        echo "<p>Users table needs 'reset_token_expires' column</p>";
+    }
+    
     $stmt = $conn->query("SHOW COLUMNS FROM products LIKE 'updated_at'");
     if ($stmt->rowCount() == 0) {
         $migration_needed = true;
@@ -118,6 +130,8 @@ try {
     $conn->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS role ENUM('user','admin') DEFAULT 'user'");
     $conn->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS status ENUM('active','inactive') DEFAULT 'active'");
     $conn->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+    $conn->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255) NULL");
+    $conn->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires DATETIME NULL");
     echo "<p>✅ Updated users table</p>";
     
     // Add new columns to products table

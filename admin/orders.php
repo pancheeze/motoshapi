@@ -2,6 +2,8 @@
 session_start();
 require_once '../config/database.php';
 require_once '../config/currency.php';
+require_once '../email/vendor/autoload.php';
+require_once '../email/config/email.php';
 
 // Check if admin is logged in
 if(!isset($_SESSION['admin_id'])) {
@@ -9,11 +11,39 @@ if(!isset($_SESSION['admin_id'])) {
     exit();
 }
 
-// Handle order confirmation
-if(isset($_POST['confirm_order']) && isset($_POST['order_id'])) {
+// Handle order status update
+if(isset($_POST['update_status']) && isset($_POST['order_id']) && isset($_POST['status'])) {
     $order_id = intval($_POST['order_id']);
-    $stmt = $conn->prepare("UPDATE orders SET status = 'delivered' WHERE id = ?");
+    $new_status = $_POST['status'];
+
+    // Valid statuses
+    $valid_statuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+    if (!in_array($new_status, $valid_statuses)) {
+        $_SESSION['error'] = 'Invalid status.';
+        header("Location: orders.php");
+        exit();
+    }
+
+    // Update order status
+    $stmt = $conn->prepare("UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?");
+    $stmt->execute([$new_status, $order_id]);
+
+    // Get order details for email
+    $stmt = $conn->prepare("SELECT o.*, u.username, u.email, s.first_name, s.last_name FROM orders o LEFT JOIN users u ON o.user_id = u.id LEFT JOIN shipping_information s ON o.id = s.order_id WHERE o.id = ?");
     $stmt->execute([$order_id]);
+    $order = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($order && !empty($order['email'])) {
+        $orderData = [
+            'order_id' => $order['id'],
+            'customer_name' => trim(($order['first_name'] ?? '') . ' ' . ($order['last_name'] ?? '')) ?: $order['username'],
+            'status' => $new_status
+        ];
+
+        sendOrderStatusUpdateEmail($order['email'], $orderData);
+    }
+
+    $_SESSION['success'] = 'Order status updated successfully.';
     header("Location: orders.php");
     exit();
 }
@@ -35,6 +65,21 @@ include 'includes/header.php';
 ?>
 <div class="container mt-4">
     <h2 class="mb-4">Order Management</h2>
+
+    <?php if(isset($_SESSION['success'])): ?>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <?php echo $_SESSION['success']; unset($_SESSION['success']); ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <?php endif; ?>
+
+    <?php if(isset($_SESSION['error'])): ?>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <?php echo $_SESSION['error']; unset($_SESSION['error']); ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <?php endif; ?>
+
     <div class="card">
         <div class="card-body">
             <?php if(empty($orders)): ?>
@@ -73,7 +118,19 @@ include 'includes/header.php';
                                 <td><?php echo htmlspecialchars($order['email']); ?></td>
                                 <td><?php echo date('Y-m-d H:i', strtotime($order['created_at'])); ?></td>
                                 <td><?php echo format_price($order['total_amount']); ?></td>
-                                <td><span class="badge bg-<?php echo $order['status'] == 'pending' ? 'warning' : 'success'; ?>"><?php echo ucfirst($order['status']); ?></span></td>
+                                <td>
+                                    <form method="POST" class="d-inline">
+                                        <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
+                                        <select name="status" class="form-select form-select-sm d-inline-block w-auto" onchange="this.form.submit()">
+                                            <option value="pending" <?php echo $order['status'] == 'pending' ? 'selected' : ''; ?>>Pending</option>
+                                            <option value="processing" <?php echo $order['status'] == 'processing' ? 'selected' : ''; ?>>Processing</option>
+                                            <option value="shipped" <?php echo $order['status'] == 'shipped' ? 'selected' : ''; ?>>Shipped</option>
+                                            <option value="delivered" <?php echo $order['status'] == 'delivered' ? 'selected' : ''; ?>>Delivered</option>
+                                            <option value="cancelled" <?php echo $order['status'] == 'cancelled' ? 'selected' : ''; ?>>Cancelled</option>
+                                        </select>
+                                        <input type="hidden" name="update_status" value="1">
+                                    </form>
+                                </td>
                                 <td><span class="badge bg-primary">Online</span></td>
                                 <td>
                                     <?php
@@ -88,14 +145,7 @@ include 'includes/header.php';
                                     <br><small><?php echo $fixed_shipping_time; ?></small>
                                 </td>
                                 <td>
-                                    <div class="d-flex gap-2">
-                                        <button class="btn btn-sm btn-info" type="button" data-bs-toggle="collapse" data-bs-target="#orderItems<?php echo $order['id']; ?>">View</button>
-                                        <?php if ($order['status'] != 'delivered'): ?>
-                                            <!-- No additional actions for pending orders -->
-                                        <?php else: ?>
-                                            <span class="text-success">Received</span>
-                                        <?php endif; ?>
-                                    </div>
+                                    <button class="btn btn-sm btn-info" type="button" data-bs-toggle="collapse" data-bs-target="#orderItems<?php echo $order['id']; ?>">View Details</button>
                                 </td>
                             </tr>
                             <tr class="collapse" id="orderItems<?php echo $order['id']; ?>">

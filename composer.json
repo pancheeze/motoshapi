@@ -1,0 +1,14 @@
+{
+    "name": "motoshapi/ecommerce",
+    "description": "Motoshapi Motorcycle Parts E-commerce System",
+    "type": "project",
+    "require": {
+        "php": ">=7.4",
+        "phpmailer/phpmailer": "^6.8"
+    },
+    "autoload": {
+        "psr-4": {
+            "Motoshapi\\": "src/"
+        }
+    }
+}

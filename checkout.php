@@ -8,6 +8,8 @@ if (!isset($_SESSION['user_id'])) {
 }
 require_once 'config/database.php';
 require_once 'config/currency.php';
+require_once 'email/vendor/autoload.php';
+require_once 'email/config/email.php';
 
 $buy_now = isset($_GET['buy_now']) && $_GET['buy_now'] == 1;
 
@@ -121,6 +123,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
         if (!$buy_now) {
             unset($_SESSION['cart']);
         }
+
+        // Send order confirmation email
+        $orderData = [
+            'order_id' => $order_id,
+            'customer_name' => $_POST['first_name'] . ' ' . $_POST['last_name'],
+            'email' => $_POST['email'],
+            'first_name' => $_POST['first_name'],
+            'last_name' => $_POST['last_name'],
+            'phone' => $_POST['phone'],
+            'house_number' => $_POST['house_number'],
+            'street' => $_POST['street'],
+            'barangay' => $_POST['barangay'],
+            'city' => $_POST['city'],
+            'province' => $_POST['province'],
+            'postal_code' => $_POST['postal_code'],
+            'items' => $checkout_items
+        ];
+
+        sendOrderConfirmationEmail($_POST['email'], $orderData);
 
         // Show success message
         $title = 'Order Placed - Motoshapi';

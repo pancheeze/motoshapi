@@ -3,6 +3,9 @@ $title = 'Register - Motoshapi';
 $activePage = 'register';
 include 'includes/header.php';
 
+require_once 'email/vendor/autoload.php';
+require_once 'email/config/email.php';
+
 $error = '';
 $success = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -23,7 +26,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
             $stmt = $conn->prepare('INSERT INTO users (username, password, email) VALUES (?, ?, ?)');
             if ($stmt->execute([$username, $hashed_password, $email])) {
-                $success = 'Registration successful! You can now <a href="login.php">login</a>.';
+                // Send welcome email
+                if (sendWelcomeEmail($email, $username)) {
+                    $success = 'Registration successful! A welcome email has been sent to your email address. You can now <a href="login.php">login</a>.';
+                } else {
+                    $success = 'Registration successful! You can now <a href="login.php">login</a>. (Note: Welcome email could not be sent at this time.)';
+                }
             } else {
                 $error = 'Registration failed. Please try again.';
             }
