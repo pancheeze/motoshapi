@@ -283,9 +283,6 @@ function sendPasswordResetEmail($email, $resetToken) {
                     <strong>Important:</strong> This link will expire in 1 hour for security reasons. If you didn't request this password reset, please ignore this email.
                 </div>
 
-                <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
-                <p><a href='{$resetLink}'>{$resetLink}</a></p>
-
                 <p>For security reasons, this link can only be used once.</p>
             </div>
             <div class='footer'>
@@ -297,7 +294,7 @@ function sendPasswordResetEmail($email, $resetToken) {
     </html>
     ";
 
-    $altBody = "Password Reset Request\n\nYou have requested to reset your password.\n\nReset your password here: {$resetLink}\n\nThis link will expire in 1 hour.";
+    $altBody = "Password Reset Request\n\nYou have requested to reset your password.\n\nThis link will expire in 1 hour.";
 
     $result = sendEmail($email, $subject, $body, $altBody);
     return $result === true;
