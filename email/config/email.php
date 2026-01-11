@@ -58,7 +58,8 @@ function sendEmail($to, $subject, $body, $altBody = '') {
         $mail->Host = SMTP_HOST;
         $mail->SMTPAuth = true;
         $mail->Username = SMTP_USERNAME;
-        $mail->Password = SMTP_PASSWORD;
+        // Gmail app passwords are sometimes copied with spaces; strip them to avoid auth failures.
+        $mail->Password = preg_replace('/\s+/', '', (string) SMTP_PASSWORD);
         $mail->SMTPSecure = SMTP_ENCRYPTION;
         $mail->Port = SMTP_PORT;
 
