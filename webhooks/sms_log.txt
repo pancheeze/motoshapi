@@ -1,0 +1,36 @@
+[2026-01-11 02:25:34] {"from":"+639123456789","text":"Test message from SMS Forwarder","sentStamp":"1234567890","receivedStamp":"1234567890"}
+[2026-01-11 02:33:07] {
+  "from":"123456789",
+  "text":"test message",
+  "sentStamp":1768095188246,
+  "receivedStamp":1768095188247,
+  "sim":"sim1"
+}
+[2026-01-11 02:33:48] {
+  "from":"123456789",
+  "text":"i don't want this parcel",
+  "sentStamp":1768095228973,
+  "receivedStamp":1768095228973,
+  "sim":"sim1"
+}
+[2026-01-11 03:13:17] {
+  "from":"123456789",
+  "text":"i wanna cancel the parcel",
+  "sentStamp":1768097597611,
+  "receivedStamp":1768097597611,
+  "sim":"sim1"
+}
+[2026-01-11 03:20:33] {
+  "from":"09917337928",
+  "text":"i wanna cancel the parcel",
+  "sentStamp":1768098034118,
+  "receivedStamp":1768098034119,
+  "sim":"sim1"
+}
+[2026-01-11 05:35:58] {
+  "from":"09917337928",
+  "text":"i wanna cancel the parcel",
+  "sentStamp":1768106158726,
+  "receivedStamp":1768106158726,
+  "sim":"sim1"
+}

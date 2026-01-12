@@ -1,5 +1,4 @@
 <?php
-// Test comment for schema sync - $(date)
 session_start();
 if (!isset($_SESSION['user_id'])) {
     $_SESSION['error'] = "You must be logged in to checkout.";
@@ -8,6 +7,15 @@ if (!isset($_SESSION['user_id'])) {
 }
 require_once 'config/database.php';
 require_once 'config/currency.php';
+require_once 'includes/sms_helper.php';
+
+// Fetch user data for auto-fill
+$user_data = [];
+if (isset($_SESSION['user_id'])) {
+    $user_stmt = $conn->prepare('SELECT email, phone FROM users WHERE id = ?');
+    $user_stmt->execute([$_SESSION['user_id']]);
+    $user_data = $user_stmt->fetch(PDO::FETCH_ASSOC);
+}
 
 $buy_now = isset($_GET['buy_now']) && $_GET['buy_now'] == 1;
 
@@ -118,6 +126,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
         ]);
 
         $conn->commit();
+        
+        // Send SMS notification to customer
+        if (!empty($_POST['phone'])) {
+            $smsResult = sendOrderPlacedSMS($_POST['phone'], $order_id, $total);
+            // SMS is sent but doesn't block order completion if it fails
+        }
+        
         if (!$buy_now) {
             unset($_SESSION['cart']);
         }
@@ -180,11 +195,11 @@ include 'includes/header.php';
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="email" class="form-label" style="display: block; margin-bottom: var(--spacing-sm); font-weight: 600; color: var(--text-primary);">Email</label>
-                            <input type="email" class="form-control" id="email" name="email" required style="background: var(--bg-primary); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: var(--radius-md); width: 100%;">
+                            <input type="email" class="form-control" id="email" name="email" value="<?php echo htmlspecialchars($user_data['email'] ?? ''); ?>" required style="background: var(--bg-primary); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: var(--radius-md); width: 100%;">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="phone" class="form-label" style="display: block; margin-bottom: var(--spacing-sm); font-weight: 600; color: var(--text-primary);">Phone Number</label>
-                            <input type="tel" class="form-control" id="phone" name="phone" required style="background: var(--bg-primary); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: var(--radius-md); width: 100%;">
+                            <input type="tel" class="form-control" id="phone" name="phone" value="<?php echo htmlspecialchars($user_data['phone'] ?? ''); ?>" required placeholder="+63 912 345 6789" style="background: var(--bg-primary); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: var(--radius-md); width: 100%;">
                         </div>
                     </div>
                     <div class="row">
