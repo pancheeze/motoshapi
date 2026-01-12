@@ -72,12 +72,46 @@ This system uses **SMSGate** - a free Android-based SMS gateway that turns your 
    ```
    http://192.168.1.50/MOTOSHAPI/webhooks/sms_webhook.php
    ```
+   (Replace `192.168.1.50` with your actual computer IP)
 4. Enable the forwarding service
 
 ### Step 3: Test Incoming SMS
 1. Send an SMS to your Android phone from another phone
 2. Check the webhook log file: `webhooks/sms_log.txt`
 3. Check the database `sms_logs` table for received messages 
+
+> **⚠️ DEFENSE DAY NOTE:** Your computer's IP address will change when you connect to a different Wi-Fi network!
+> Before demonstration, run `ipconfig` again and update the webhook URL in SMS Forwarder app.
+
+---
+
+## Defense Day Quick Setup
+
+**Both IP addresses will change on different Wi-Fi networks!**
+
+### Before Your Defense Presentation:
+
+1. **Connect to Venue Wi-Fi**
+   - Connect both phone and laptop to the same Wi-Fi network
+
+2. **Update SMSGate (Sending)**
+   - Open SMSGate app → note the IP address
+   - Go to Admin Panel → SMS Settings
+   - Update Gateway URL with new phone IP
+   - Save settings
+
+3. **Update SMS Forwarder (Receiving)**
+   - On laptop: Open Command Prompt → type `ipconfig` → note IPv4 Address
+   - Open SMS Forwarder app on phone
+   - Update webhook URL: `http://[NEW-LAPTOP-IP]/MOTOSHAPI/webhooks/sms_webhook.php`
+   - Example: `http://192.168.50.100/MOTOSHAPI/webhooks/sms_webhook.php`
+
+4. **Test Everything**
+   - Send test SMS from SMS Dashboard
+   - Send SMS to phone to test receiving
+   - Check logs in View Logs tab
+
+✅ **Ready for demonstration!**
 
 ---
 

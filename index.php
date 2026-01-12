@@ -1,5 +1,4 @@
 <?php
-// Test comment for schema sync - $(date)
 session_start();
 require_once 'config/database.php';
 require_once 'config/currency.php';
