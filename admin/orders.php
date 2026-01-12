@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../config/currency.php';
+require_once '../includes/sms_helper.php';
 
 // Check if admin is logged in
 if(!isset($_SESSION['admin_id'])) {
@@ -9,11 +10,70 @@ if(!isset($_SESSION['admin_id'])) {
     exit();
 }
 
-// Handle order confirmation
+// Handle order status update
+if(isset($_POST['update_status']) && isset($_POST['order_id']) && isset($_POST['new_status'])) {
+    $order_id = intval($_POST['order_id']);
+    $new_status = $_POST['new_status'];
+    
+    // Get order and customer phone number before updating
+    $stmt = $conn->prepare("
+        SELECT o.*, s.phone 
+        FROM orders o 
+        LEFT JOIN shipping_information s ON o.id = s.order_id 
+        WHERE o.id = ?
+    ");
+    $stmt->execute([$order_id]);
+    $order = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    // Update order status
+    $stmt = $conn->prepare("UPDATE orders SET status = ? WHERE id = ?");
+    $stmt->execute([$new_status, $order_id]);
+    
+    // Send SMS notification based on status (only if valid phone number)
+    $phone = $order['phone'] ?? '';
+    $phoneLength = strlen(preg_replace('/[^0-9]/', '', $phone)); // Count only digits
+    
+    if (!empty($phone) && $phoneLength >= 10) { // Valid phone has at least 10 digits
+        switch($new_status) {
+            case 'shipped':
+                sendOrderShippedSMS($phone, $order_id);
+                break;
+            case 'delivered':
+                sendOrderDeliveredSMS($phone, $order_id);
+                break;
+            case 'cancelled':
+                sendOrderCancelledSMS($phone, $order_id);
+                break;
+        }
+    }
+    
+    $_SESSION['success'] = "Order #$order_id status updated to $new_status";
+    header("Location: orders.php");
+    exit();
+}
+
+// Handle order confirmation (legacy support)
 if(isset($_POST['confirm_order']) && isset($_POST['order_id'])) {
     $order_id = intval($_POST['order_id']);
+    
+    // Get customer phone
+    $stmt = $conn->prepare("
+        SELECT s.phone 
+        FROM orders o 
+        LEFT JOIN shipping_information s ON o.id = s.order_id 
+        WHERE o.id = ?
+    ");
+    $stmt->execute([$order_id]);
+    $order = $stmt->fetch(PDO::FETCH_ASSOC);
+    
     $stmt = $conn->prepare("UPDATE orders SET status = 'delivered' WHERE id = ?");
     $stmt->execute([$order_id]);
+    
+    // Send delivered SMS
+    if (!empty($order['phone'])) {
+        sendOrderDeliveredSMS($order['phone'], $order_id);
+    }
+    
     header("Location: orders.php");
     exit();
 }
@@ -35,6 +95,17 @@ include 'includes/header.php';
 ?>
 <div class="container mt-4">
     <h2 class="mb-4">Order Management</h2>
+    
+    <?php if(isset($_SESSION['success'])): ?>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <?php 
+            echo htmlspecialchars($_SESSION['success']); 
+            unset($_SESSION['success']);
+            ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <?php endif; ?>
+    
     <div class="card">
         <div class="card-body">
             <?php if(empty($orders)): ?>
@@ -88,12 +159,33 @@ include 'includes/header.php';
                                     <br><small><?php echo $fixed_shipping_time; ?></small>
                                 </td>
                                 <td>
-                                    <div class="d-flex gap-2">
+                                    <div class="d-flex gap-2 align-items-center">
                                         <button class="btn btn-sm btn-info" type="button" data-bs-toggle="collapse" data-bs-target="#orderItems<?php echo $order['id']; ?>">View</button>
-                                        <?php if ($order['status'] != 'delivered'): ?>
-                                            <!-- No additional actions for pending orders -->
-                                        <?php else: ?>
-                                            <span class="text-success">Received</span>
+                                        
+                                        <?php if ($order['status'] == 'pending'): ?>
+                                            <form method="POST" class="d-inline">
+                                                <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
+                                                <input type="hidden" name="new_status" value="shipped">
+                                                <button type="submit" name="update_status" class="btn btn-sm btn-primary" onclick="return confirm('Mark order as shipped?')">Ship Order</button>
+                                            </form>
+                                        <?php elseif ($order['status'] == 'shipped'): ?>
+                                            <form method="POST" class="d-inline">
+                                                <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
+                                                <input type="hidden" name="new_status" value="delivered">
+                                                <button type="submit" name="update_status" class="btn btn-sm btn-success" onclick="return confirm('Mark order as delivered?')">Mark Delivered</button>
+                                            </form>
+                                        <?php elseif ($order['status'] == 'delivered'): ?>
+                                            <span class="badge bg-success">Completed</span>
+                                        <?php endif; ?>
+                                        
+                                        <?php if ($order['status'] != 'delivered' && $order['status'] != 'cancelled'): ?>
+                                            <form method="POST" class="d-inline">
+                                                <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
+                                                <input type="hidden" name="new_status" value="cancelled">
+                                                <button type="submit" name="update_status" class="btn btn-sm btn-danger" onclick="return confirm('Cancel this order?')">Cancel</button>
+                                            </form>
+                                        <?php elseif ($order['status'] == 'cancelled'): ?>
+                                            <span class="badge bg-danger">Cancelled</span>
                                         <?php endif; ?>
                                     </div>
                                 </td>

@@ -109,13 +109,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
         }
 
         // Insert shipping information
+        $phone = $_POST['phone'] ?? '';
+        
+        // Debug: Log phone number to check what's being received
+        error_log("Checkout phone received: " . $phone);
+        
         $stmt = $conn->prepare('INSERT INTO shipping_information (order_id, first_name, last_name, email, phone, house_number, street, barangay, city, province, postal_code, payment_mode_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
         $stmt->execute([
             $order_id,
             $_POST['first_name'],
             $_POST['last_name'],
             $_POST['email'],
-            $_POST['phone'],
+            $phone,
             $_POST['house_number'],
             $_POST['street'],
             $_POST['barangay'],

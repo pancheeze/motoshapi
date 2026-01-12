@@ -8,6 +8,7 @@ $success = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username']);
     $email = trim($_POST['email']);
+    $phone = isset($_POST['phone']) ? trim($_POST['phone']) : null;
     $password = $_POST['password'];
     $confirm_password = $_POST['confirm_password'];
 
@@ -21,8 +22,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Username or email already exists.';
         } else {
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $conn->prepare('INSERT INTO users (username, password, email) VALUES (?, ?, ?)');
-            if ($stmt->execute([$username, $hashed_password, $email])) {
+            $stmt = $conn->prepare('INSERT INTO users (username, password, email, phone) VALUES (?, ?, ?, ?)');
+            if ($stmt->execute([$username, $hashed_password, $email, $phone])) {
                 $success = 'Registration successful! You can now <a href="login.php">login</a>.';
             } else {
                 $error = 'Registration failed. Please try again.';
@@ -58,6 +59,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div style="margin-bottom: var(--spacing-lg);">
                     <label for="email" style="display: block; margin-bottom: var(--spacing-sm); font-weight: 600; color: var(--text-primary);">Email</label>
                     <input type="email" class="form-control" id="email" name="email" required style="background: var(--bg-primary); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: var(--radius-md); width: 100%; font-size: 1rem;">
+                </div>
+                <div style="margin-bottom: var(--spacing-lg);">
+                    <label for="phone" style="display: block; margin-bottom: var(--spacing-sm); font-weight: 600; color: var(--text-primary);">Phone Number <span style="color: var(--text-muted); font-size: 0.875rem;">(Optional)</span></label>
+                    <input type="tel" class="form-control" id="phone" name="phone" placeholder="+63 912 345 6789" style="background: var(--bg-primary); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: var(--radius-md); width: 100%; font-size: 1rem;">
                 </div>
                 <div style="margin-bottom: var(--spacing-lg);">
                     <label for="password" style="display: block; margin-bottom: var(--spacing-sm); font-weight: 600; color: var(--text-primary);">Password</label>

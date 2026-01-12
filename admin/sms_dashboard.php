@@ -29,7 +29,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_sms'])) {
 // Handle SMS deletion
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_sms'])) {
     $logId = $_POST['log_id'];
-    $conn->prepare("DELETE FROM sms_logs WHERE id = ?")->execute([$logId]);
+    error_log("Deleting SMS with ID: " . $logId);
+    $stmt = $conn->prepare("DELETE FROM sms_logs WHERE id = ?");
+    $stmt->execute([$logId]);
+    error_log("Deleted " . $stmt->rowCount() . " row(s)");
     header("Location: sms_dashboard.php?tab=logs");
     exit();
 }
@@ -37,7 +40,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_sms'])) {
 // Handle conversation deletion (all messages from a phone number)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_conversation'])) {
     $phone = $_POST['phone_number'];
-    $conn->prepare("DELETE FROM sms_logs WHERE phone_number = ?")->execute([$phone]);
+    error_log("Deleting conversation for phone: " . $phone);
+    
+    // Delete all messages that match this phone number in any format
+    // Get the last 10 digits to match both 09XX and +639XX formats
+    $digitsOnly = preg_replace('/[^0-9]/', '', $phone);
+    if (strlen($digitsOnly) >= 10) {
+        $last10 = substr($digitsOnly, -10);
+        error_log("Deleting by last 10 digits: " . $last10);
+        // Delete all messages where the phone number contains these 10 digits
+        $stmt = $conn->prepare("DELETE FROM sms_logs WHERE REPLACE(REPLACE(REPLACE(phone_number, '+', ''), '-', ''), ' ', '') LIKE ?");
+        $stmt->execute(['%' . $last10]);
+        error_log("Deleted " . $stmt->rowCount() . " row(s)");
+    } else {
+        // Fallback to exact match if phone format is weird
+        error_log("Deleting by exact match");
+        $stmt = $conn->prepare("DELETE FROM sms_logs WHERE phone_number = ?");
+        $stmt->execute([$phone]);
+        error_log("Deleted " . $stmt->rowCount() . " row(s)");
+    }
+    
     header("Location: sms_dashboard.php?tab=logs");
     exit();
 }
@@ -56,20 +78,66 @@ $recentLogs = $conn->query("
     ORDER BY phone_number, created_at ASC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
-// Group messages by phone number for conversation view with proper threading
+// Normalize phone number for matching (converts 09XX to +639XX and vice versa)
+function normalizePhoneForMatching($phone) {
+    // Remove all non-digit characters
+    $digitsOnly = preg_replace('/[^0-9]/', '', $phone);
+    
+    // Return just the last 10 digits (the actual phone number part)
+    // This way 09123456789, +639123456789, 639123456789 all become 9123456789
+    if (strlen($digitsOnly) >= 10) {
+        return substr($digitsOnly, -10);
+    }
+    
+    return $digitsOnly;
+}
+
+// Find the canonical phone number from users table
+function getCanonicalPhone($conn, $phone) {
+    $normalized = normalizePhoneForMatching($phone);
+    
+    // Try to find matching user by checking both formats
+    $stmt = $conn->prepare("
+        SELECT phone FROM users 
+        WHERE REPLACE(REPLACE(REPLACE(phone, '+', ''), '-', ''), ' ', '') LIKE ?
+        LIMIT 1
+    ");
+    $stmt->execute(['%' . $normalized]);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if ($result) {
+        return $result['phone']; // Return the phone from user account
+    }
+    
+    // If no user found, check shipping_information
+    $stmt = $conn->prepare("
+        SELECT phone FROM shipping_information 
+        WHERE REPLACE(REPLACE(REPLACE(phone, '+', ''), '-', ''), ' ', '') LIKE ?
+        LIMIT 1
+    ");
+    $stmt->execute(['%' . $normalized]);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    return $result ? $result['phone'] : $phone; // Return registered phone or original
+}
+
+// Group messages by canonical phone number (from user account)
 $conversations = [];
 foreach ($recentLogs as $log) {
     $phone = $log['phone_number'];
-    if (!isset($conversations[$phone])) {
-        $conversations[$phone] = [
+    $canonicalPhone = getCanonicalPhone($conn, $phone);
+    
+    if (!isset($conversations[$canonicalPhone])) {
+        $conversations[$canonicalPhone] = [
             'messages' => [],
-            'last_activity' => $log['created_at']
+            'last_activity' => $log['created_at'],
+            'display_phone' => $canonicalPhone
         ];
     }
-    $conversations[$phone]['messages'][] = $log;
+    $conversations[$canonicalPhone]['messages'][] = $log;
     // Update last activity time
-    if (strtotime($log['created_at']) > strtotime($conversations[$phone]['last_activity'])) {
-        $conversations[$phone]['last_activity'] = $log['created_at'];
+    if (strtotime($log['created_at']) > strtotime($conversations[$canonicalPhone]['last_activity'])) {
+        $conversations[$canonicalPhone]['last_activity'] = $log['created_at'];
     }
 }
 
@@ -97,8 +165,25 @@ $unrepliedMessages = $conn->query("
 // Test connectivity
 function testGatewayConnection() {
     $url = SMS_GATEWAY_URL . '/health';
-    $context = stream_context_create(['http' => ['timeout' => 3]]);
+    $auth = base64_encode(SMS_USERNAME . ':' . SMS_PASSWORD);
+    
+    $context = stream_context_create([
+        'http' => [
+            'timeout' => 3,
+            'method' => 'GET',
+            'header' => "Authorization: Basic " . $auth . "\r\n"
+        ]
+    ]);
+    
+    // Try health endpoint first
     $result = @file_get_contents($url, false, $context);
+    
+    // If health endpoint doesn't exist, try the base URL
+    if ($result === false) {
+        $baseUrl = SMS_GATEWAY_URL;
+        $result = @file_get_contents($baseUrl, false, $context);
+    }
+    
     return $result !== false;
 }
 $gatewayOnline = SMS_ENABLED ? testGatewayConnection() : false;
@@ -118,8 +203,9 @@ include 'includes/header.php';
 .log-item.received { border-left-color: var(--bs-info); background: #f0f7ff; }
 .conversation-card { transition: box-shadow 0.2s; }
 .conversation-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; }
-.message-container .btn { opacity: 0; transition: opacity 0.2s; }
-.message-container:hover .btn { opacity: 1; }
+/* Delete buttons: slightly visible by default, fully visible on hover */
+.message-bubble .delete-msg-btn { transition: opacity 0.2s; }
+.message-bubble:hover .delete-msg-btn { opacity: 1 !important; }
 </style>
 
 <div class="card border-0 shadow-sm mb-4">
@@ -516,14 +602,14 @@ include 'includes/header.php';
                                         </div>
                                     </div>
                                 </div>
-                                <div class="card-body p-3" style="max-height: 500px; overflow-y: auto;">
+                                <div class="card-body p-4" style="max-height: 500px; overflow-y: auto; background: #f5f5f5;">
                                     <?php foreach ($conversation['messages'] as $log): ?>
-                                        <div class="mb-3 <?php echo $log['status'] == 'received' ? 'text-start' : 'text-end'; ?> message-container" data-status="<?php echo $log['status']; ?>">
-                                            <div class="d-inline-block position-relative" style="max-width: 70%;">
-                                                <div class="<?php echo $log['status'] == 'received' ? 'bg-light border' : 'bg-success text-white'; ?> p-3 rounded-3 shadow-sm">
-                                                    <button class="btn btn-sm position-absolute top-0 end-0 m-1 <?php echo $log['status'] == 'received' ? 'btn-outline-danger' : 'btn-light text-danger'; ?>" 
+                                        <div class="mb-4 <?php echo $log['status'] == 'received' ? 'text-start' : 'text-end'; ?> message-container" data-status="<?php echo $log['status']; ?>">
+                                            <div class="d-inline-block position-relative" style="max-width: 65%;">
+                                                <div class="<?php echo $log['status'] == 'received' ? 'bg-white border' : 'bg-success text-white'; ?> p-3 rounded-4 shadow-sm position-relative message-bubble">
+                                                    <button class="btn btn-sm position-absolute top-0 end-0 m-1 <?php echo $log['status'] == 'received' ? 'btn-outline-danger' : 'btn-light text-danger'; ?> delete-msg-btn" 
                                                             onclick="deleteSMS(<?php echo $log['id']; ?>)" 
-                                                            style="padding: 0.15rem 0.4rem; font-size: 0.75rem;"
+                                                            style="padding: 0.15rem 0.4rem; font-size: 0.75rem; opacity: 0.3;"
                                                             title="Delete this message">
                                                         <i class="bi bi-x-lg"></i>
                                                     </button>
@@ -602,7 +688,18 @@ include 'includes/header.php';
 
             <!-- Configuration Tab -->
             <div class="tab-pane fade" id="config">
-                <h4 class="mb-4">SMS Gateway Configuration</h4>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="mb-0">SMS Gateway Configuration</h4>
+                    <a href="sms_settings.php" class="btn btn-primary">
+                        <i class="bi bi-gear me-1"></i> Edit Settings
+                    </a>
+                </div>
+                
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Note:</strong> Gateway URL will change when you switch Wi-Fi networks. 
+                    Use the <strong>Edit Settings</strong> button above to quickly update before your defense presentation.
+                </div>
                 
                 <div class="table-responsive mb-4">
                     <table class="table table-bordered">
@@ -676,8 +773,10 @@ include 'includes/header.php';
 // Delete single SMS message
 function deleteSMS(logId) {
     if (confirm('Are you sure you want to delete this message? This action cannot be undone.')) {
+        console.log('Deleting SMS ID:', logId);
         const form = document.createElement('form');
         form.method = 'POST';
+        form.action = 'sms_dashboard.php?tab=logs';
         form.innerHTML = `
             <input type="hidden" name="delete_sms" value="1">
             <input type="hidden" name="log_id" value="${logId}">
@@ -690,8 +789,10 @@ function deleteSMS(logId) {
 // Delete entire conversation
 function deleteConversation(phoneNumber) {
     if (confirm(`Delete entire conversation with ${phoneNumber}? This will remove all messages from this number and cannot be undone.`)) {
+        console.log('Deleting conversation for:', phoneNumber);
         const form = document.createElement('form');
         form.method = 'POST';
+        form.action = 'sms_dashboard.php?tab=logs';
         form.innerHTML = `
             <input type="hidden" name="delete_conversation" value="1">
             <input type="hidden" name="phone_number" value="${phoneNumber}">

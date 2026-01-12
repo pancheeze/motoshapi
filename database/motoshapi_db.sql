@@ -277,6 +277,7 @@ CREATE TABLE `users` (
   `username` varchar(50) NOT NULL,
   `password` varchar(255) NOT NULL,
   `email` varchar(100) NOT NULL,
+  `phone` varchar(20) DEFAULT NULL,
   `role` enum('user','admin') DEFAULT 'user',
   `status` enum('active','inactive') DEFAULT 'active',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -472,6 +473,23 @@ ALTER TABLE `users`
 --
 ALTER TABLE `variations`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- Table structure for table `sms_logs`
+--
+
+CREATE TABLE `sms_logs` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `phone_number` varchar(20) NOT NULL,
+  `message` text NOT NULL,
+  `status` enum('sent','failed','received','disabled') NOT NULL DEFAULT 'sent',
+  `response` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_phone` (`phone_number`),
+  KEY `idx_status` (`status`),
+  KEY `idx_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Constraints for dumped tables

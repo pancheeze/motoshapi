@@ -1,6 +1,7 @@
 <?php
 $title = 'My Orders - Motoshapi';
 include 'includes/header.php';
+require_once 'includes/sms_helper.php';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
@@ -12,8 +13,28 @@ $user_id = $_SESSION['user_id'];
 // Handle order received action
 if (isset($_POST['order_received']) && isset($_POST['order_id'])) {
     $order_id = intval($_POST['order_id']);
-    $stmt = $conn->prepare('UPDATE orders SET status = "delivered" WHERE id = ? AND user_id = ?');
+    
+    // Get order details and phone number
+    $stmt = $conn->prepare('
+        SELECT o.*, s.phone 
+        FROM orders o 
+        LEFT JOIN shipping_information s ON o.id = s.order_id 
+        WHERE o.id = ? AND o.user_id = ?
+    ');
     $stmt->execute([$order_id, $user_id]);
+    $order = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if ($order) {
+        // Update order status to delivered
+        $stmt = $conn->prepare('UPDATE orders SET status = "delivered" WHERE id = ? AND user_id = ?');
+        $stmt->execute([$order_id, $user_id]);
+        
+        // Send SMS confirmation to customer that their order receipt was confirmed
+        if (!empty($order['phone'])) {
+            $message = "MOTOSHAPI: Thank you for confirming receipt of order #{$order_id}! We hope you're satisfied with your purchase. Please rate your experience!";
+            sendSMS($order['phone'], $message);
+        }
+    }
 }
 
 // Fetch user orders

@@ -34,3 +34,108 @@
   "receivedStamp":1768106158726,
   "sim":"sim1"
 }
+[2026-01-12 05:05:01] {
+  "from":"%paul%",
+  "text":"%ayoko na bumili%",
+  "sentStamp":1768190701008,
+  "receivedStamp":1768190701008,
+  "sim":"sim1"
+}
+[2026-01-12 05:05:29] {
+  "from":"paul",
+  "text":"ayoko na bumili",
+  "sentStamp":1768190728329,
+  "receivedStamp":1768190728330,
+  "sim":"sim1"
+}
+[2026-01-12 05:09:31] {
+  "from":"paul",
+  "text":"ayoko na bumili",
+  "sentStamp":1768190970627,
+  "receivedStamp":1768190970628,
+  "sim":"sim1"
+}
+[2026-01-12 06:07:53] {
+  "from":"paul",
+  "text":"ayoko na bumili",
+  "sentStamp":1768194472960,
+  "receivedStamp":1768194472960,
+  "sim":"sim1"
+}
+[2026-01-12 06:09:16] {
+  "from":"paul",
+  "text":"salamat",
+  "sentStamp":1768194556022,
+  "receivedStamp":1768194556023,
+  "sim":"sim1"
+}
+[2026-01-12 06:10:52] {
+  "from":"paul",
+  "text":"salamat",
+  "sentStamp":1768194651775,
+  "receivedStamp":1768194651776,
+  "sim":"sim1"
+}
+[2026-01-12 06:37:07] {
+  "from":"123456789",
+  "text":"salamat",
+  "sentStamp":1768196226157,
+  "receivedStamp":1768196226173,
+  "sim":"sim1"
+}
+[2026-01-12 06:38:12] {
+  "from":"123456789",
+  "text":"test message",
+  "sentStamp":1768196291987,
+  "receivedStamp":1768196291988,
+  "sim":"sim1"
+}
+[2026-01-12 06:39:42] {
+  "from":"09911661701",
+  "text":"salamat",
+  "sentStamp":1768196381342,
+  "receivedStamp":1768196381343,
+  "sim":"sim1"
+}
+[2026-01-12 06:40:49] {
+  "from":"09911661701",
+  "text":"salamat",
+  "sentStamp":1768196448414,
+  "receivedStamp":1768196448415,
+  "sim":"sim1"
+}
+[2026-01-12 06:43:37] {
+  "from":"09911661701",
+  "text":"salamat",
+  "sentStamp":1768196616587,
+  "receivedStamp":1768196616587,
+  "sim":"sim1"
+}
+[2026-01-12 06:46:27] {
+  "from":"09911661701",
+  "text":"salamat",
+  "sentStamp":1768196787171,
+  "receivedStamp":1768196787171,
+  "sim":"sim1"
+}
+[2026-01-12 06:48:04] {
+  "from":"09911661701",
+  "text":"i cancelled the order",
+  "sentStamp":1768196883529,
+  "receivedStamp":1768196883529,
+  "sim":"sim1"
+}
+[2026-01-12 07:05:23] {
+  "from":"09911661701",
+  "text":"salamat",
+  "sentStamp":1768197922861,
+  "receivedStamp":1768197922861,
+  "sim":"sim1"
+}
+[2026-01-12 07:09:09] {
+  "from":"09911661701",
+  "text":"salamat",
+  "sentStamp":1768198148298,
+  "receivedStamp":1768198148298,
+  "sim":"sim1"
+}

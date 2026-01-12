@@ -20,13 +20,15 @@ $success = '';
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     $email = trim($_POST['email']);
+    $phone = isset($_POST['phone']) ? trim($_POST['phone']) : null;
     
     if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
         try {
-            $stmt = $conn->prepare('UPDATE users SET email = ? WHERE id = ?');
-            $stmt->execute([$email, $user_id]);
+            $stmt = $conn->prepare('UPDATE users SET email = ?, phone = ? WHERE id = ?');
+            $stmt->execute([$email, $phone, $user_id]);
             $success = 'Profile updated successfully!';
-            $user['email'] = $email; // Update the displayed email
+            $user['email'] = $email;
+            $user['phone'] = $phone;
         } catch (PDOException $e) {
             $error = 'Error updating profile. Please try again.';
         }
@@ -60,6 +62,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                         <div style="margin-bottom: var(--spacing-lg);">
                             <label for="email" class="form-label" style="display: block; margin-bottom: var(--spacing-sm); font-weight: 600; color: var(--text-primary);">Email</label>
                             <input type="email" class="form-control" id="email" name="email" value="<?php echo htmlspecialchars($user['email']); ?>" required style="background: var(--bg-primary); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: var(--radius-md); width: 100%;">
+                        </div>
+                        <div style="margin-bottom: var(--spacing-lg);">
+                            <label for="phone" class="form-label" style="display: block; margin-bottom: var(--spacing-sm); font-weight: 600; color: var(--text-primary);">Phone Number <span style="color: var(--text-muted); font-size: 0.875rem;">(Optional)</span></label>
+                            <input type="tel" class="form-control" id="phone" name="phone" value="<?php echo htmlspecialchars($user['phone'] ?? ''); ?>" placeholder="+63 912 345 6789" style="background: var(--bg-primary); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: var(--radius-md); width: 100%;">
                         </div>
                         <div style="margin-bottom: var(--spacing-xl);">
                             <label class="form-label" style="display: block; margin-bottom: var(--spacing-sm); font-weight: 600; color: var(--text-primary);">Member Since</label>
