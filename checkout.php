@@ -7,6 +7,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 require_once 'config/database.php';
 require_once 'config/currency.php';
+require_once 'config/paypal_config.php';
 require_once 'includes/sms_helper.php';
 
 // Fetch user data for auto-fill
@@ -72,20 +73,39 @@ if (empty($checkout_items)) {
     exit();
 }
 
-// Online checkout only - COD is the only available payment method
+// Online checkout
+$selected_payment_mode = $_POST['payment_mode'] ?? 'cod';
+$selected_payment_mode = strtolower(trim((string)$selected_payment_mode));
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
     try {
+        $allowed_payment_modes = ['cod', 'paypal'];
+        if (!in_array($selected_payment_mode, $allowed_payment_modes, true)) {
+            throw new Exception('Invalid payment method selected.');
+        }
+
+        if ($selected_payment_mode === 'paypal') {
+            throw new Exception('Please complete payment using the PayPal button below.');
+        }
+
         $conn->beginTransaction();
 
-        // Only COD payment is supported
-        $payment_mode = 'cod';
-        
-        // Get payment_mode_id from payment_modes table
-        $stmt = $conn->prepare('SELECT id FROM payment_modes WHERE mode_code = ?');
-        $stmt->execute([$payment_mode]);
-        $payment_mode_id = $stmt->fetchColumn();
-        if (!$payment_mode_id) {
-            throw new Exception('Payment mode not found.');
+        // Get payment_mode_id from payment_modes table (auto-create if missing)
+        $stmt = $conn->prepare('SELECT id, is_active, mode_name FROM payment_modes WHERE mode_code = ?');
+        $stmt->execute([$selected_payment_mode]);
+        $payment_mode_row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$payment_mode_row) {
+            $mode_name = $selected_payment_mode === 'paypal' ? 'PayPal' : 'Cash on Delivery (COD)';
+            $stmt = $conn->prepare('INSERT INTO payment_modes (mode_name, mode_code, is_active) VALUES (?, ?, 1)');
+            $stmt->execute([$mode_name, $selected_payment_mode]);
+            $payment_mode_id = $conn->lastInsertId();
+            $payment_mode_name = $mode_name;
+        } else {
+            if ((int)$payment_mode_row['is_active'] !== 1) {
+                throw new Exception('Selected payment method is currently unavailable.');
+            }
+            $payment_mode_id = (int)$payment_mode_row['id'];
+            $payment_mode_name = $payment_mode_row['mode_name'] ?: strtoupper($selected_payment_mode);
         }
 
         // Create order
@@ -98,7 +118,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
             'pending',
             'online',
             $payment_mode_id,
-            json_encode([])
+            json_encode([
+                'payment_mode' => $selected_payment_mode,
+                'payment_mode_name' => $payment_mode_name,
+                'status' => $selected_payment_mode === 'paypal' ? 'awaiting_payment' : 'unpaid'
+            ])
         ]);
         $order_id = $conn->lastInsertId();
 
@@ -110,10 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
 
         // Insert shipping information
         $phone = $_POST['phone'] ?? '';
-        
-        // Debug: Log phone number to check what's being received
-        error_log("Checkout phone received: " . $phone);
-        
+
         $stmt = $conn->prepare('INSERT INTO shipping_information (order_id, first_name, last_name, email, phone, house_number, street, barangay, city, province, postal_code, payment_mode_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
         $stmt->execute([
             $order_id,
@@ -241,7 +262,7 @@ include 'includes/header.php';
                     <h3 style="font-size: 1.5rem; font-weight: 700; margin-top: var(--spacing-xl); margin-bottom: var(--spacing-lg); color: var(--text-primary);">Payment Method</h3>
                     <div class="mb-4" style="background: var(--bg-primary); border: 1px solid var(--border-primary); padding: var(--spacing-lg); border-radius: var(--radius-md);">
                         <div class="form-check" style="display: flex; align-items: center; gap: var(--spacing-md);">
-                            <input class="form-check-input" type="radio" name="payment_mode" id="cod" value="cod" required checked style="width: 20px; height: 20px; accent-color: var(--accent-primary);">
+                            <input class="form-check-input" type="radio" name="payment_mode" id="cod" value="cod" required <?php echo ($selected_payment_mode === 'cod') ? 'checked' : ''; ?> style="width: 20px; height: 20px; accent-color: var(--accent-primary);">
                             <label class="form-check-label" for="cod" style="color: var(--text-primary); font-weight: 600; font-size: 1.0625rem;">
                                 Cash on Delivery (COD)
                             </label>
@@ -249,9 +270,33 @@ include 'includes/header.php';
                         <small class="form-text" style="color: var(--text-secondary); display: block; margin-top: var(--spacing-sm); margin-left: 32px;">Pay when your order arrives at your doorstep</small>
                     </div>
 
+                    <div class="mb-4" style="background: var(--bg-primary); border: 1px solid var(--border-primary); padding: var(--spacing-lg); border-radius: var(--radius-md);">
+                        <div class="form-check" style="display: flex; align-items: center; gap: var(--spacing-md);">
+                            <input class="form-check-input" type="radio" name="payment_mode" id="paypal" value="paypal" <?php echo ($selected_payment_mode === 'paypal') ? 'checked' : ''; ?> style="width: 20px; height: 20px; accent-color: var(--accent-primary);">
+                            <label class="form-check-label" for="paypal" style="color: var(--text-primary); font-weight: 600; font-size: 1.0625rem;">
+                                PayPal
+                            </label>
+                        </div>
+                        <small class="form-text" style="color: var(--text-secondary); display: block; margin-top: var(--spacing-sm); margin-left: 32px;">Pay securely using PayPal (<?php echo (defined('PAYPAL_ENV') && PAYPAL_ENV === 'live') ? 'Live' : 'Sandbox'; ?>). Click <strong>Place Order</strong> to proceed.</small>
+                    </div>
+
+                    <div id="paypal-section" class="mb-4" style="display:none; background: var(--bg-primary); border: 1px solid var(--border-primary); padding: var(--spacing-lg); border-radius: var(--radius-md);">
+                        <?php if (defined('PAYPAL_CLIENT_ID') && PAYPAL_CLIENT_ID !== '' && PAYPAL_CLIENT_ID !== 'YOUR_SANDBOX_CLIENT_ID_HERE'): ?>
+                            <div id="paypal-errors" style="display:none; background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); color: var(--danger); padding: var(--spacing-md); border-radius: var(--radius-md); margin-bottom: var(--spacing-md);"></div>
+                            <div id="paypal-loading" style="display:none; background: rgba(30, 64, 175, 0.08); border: 1px solid rgba(30, 64, 175, 0.25); color: var(--text-primary); padding: var(--spacing-md); border-radius: var(--radius-md); margin-bottom: var(--spacing-md);">
+                                Loading PayPal…
+                            </div>
+                            <div id="paypal-button-container"></div>
+                        <?php else: ?>
+                            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); color: var(--danger); padding: var(--spacing-md); border-radius: var(--radius-md);">
+                                PayPal is not configured yet. Set your Sandbox Client ID/Secret in <code>config/paypal_config.php</code>.
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
                     <div class="d-flex justify-content-between" style="gap: var(--spacing-md); margin-top: var(--spacing-xl);">
                         <a href="cart.php" class="modern-btn modern-btn-secondary">Back to Cart</a>
-                        <button type="submit" name="place_order" class="modern-btn modern-btn-primary modern-btn-lg">Place Order</button>
+                        <button id="place-order-btn" type="submit" name="place_order" class="modern-btn modern-btn-primary modern-btn-lg">Place Order</button>
                     </div>
                 </form>
             </div>
@@ -278,4 +323,256 @@ include 'includes/header.php';
         </div>
     </div>
 </div>
+
+<?php if (defined('PAYPAL_CLIENT_ID') && PAYPAL_CLIENT_ID !== '' && PAYPAL_CLIENT_ID !== 'YOUR_SANDBOX_CLIENT_ID_HERE'): ?>
+    <script
+        id="paypal-sdk"
+        data-namespace="paypalSdk"
+        src="https://www.paypal.com/sdk/js?client-id=<?php echo urlencode(PAYPAL_CLIENT_ID); ?>&currency=<?php echo urlencode(defined('PAYPAL_CURRENCY_CODE') ? PAYPAL_CURRENCY_CODE : CURRENCY_CODE); ?>&components=buttons&intent=capture&disable-funding=card,credit"
+    ></script>
+<?php endif; ?>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.querySelector('form[method="POST"]');
+    const paypalSection = document.getElementById('paypal-section');
+    const placeOrderBtn = document.getElementById('place-order-btn');
+    const paypalErrors = document.getElementById('paypal-errors');
+    const paypalLoading = document.getElementById('paypal-loading');
+    let paypalRendered = false;
+    let paypalSectionOpened = false;
+
+    function selectedPaymentMode() {
+        const el = document.querySelector('input[name="payment_mode"]:checked');
+        return el ? el.value : 'cod';
+    }
+
+    function togglePaymentUI() {
+        const mode = selectedPaymentMode();
+        if (mode === 'paypal') {
+            if (placeOrderBtn) {
+                placeOrderBtn.style.display = '';
+                placeOrderBtn.textContent = 'Place Order';
+            }
+            // Only reveal PayPal buttons after the user clicks Place Order
+            if (paypalSection) paypalSection.style.display = paypalSectionOpened ? 'block' : 'none';
+            if (paypalErrors && !paypalSectionOpened) paypalErrors.style.display = 'none';
+            if (paypalSectionOpened) renderPaypalButtonsSoon();
+        } else {
+            if (paypalSection) paypalSection.style.display = 'none';
+            if (placeOrderBtn) placeOrderBtn.style.display = '';
+            if (paypalErrors) paypalErrors.style.display = 'none';
+            if (placeOrderBtn) placeOrderBtn.textContent = 'Place Order';
+            paypalSectionOpened = false;
+            setPaypalLoading(false);
+        }
+    }
+
+    function showPaypalError(message) {
+        if (!paypalErrors) {
+            alert(message);
+            return;
+        }
+        paypalErrors.textContent = message;
+        paypalErrors.style.display = 'block';
+        if (paypalLoading) paypalLoading.style.display = 'none';
+    }
+
+    function setPaypalLoading(isLoading, message) {
+        if (!paypalLoading) return;
+        paypalLoading.style.display = isLoading ? 'block' : 'none';
+        if (isLoading) {
+            paypalLoading.textContent = message || 'Loading PayPal…';
+        }
+    }
+
+    function getPaypalSdk() {
+        return window.paypalSdk;
+    }
+
+    document.querySelectorAll('input[name="payment_mode"]').forEach(function (radio) {
+        radio.addEventListener('change', togglePaymentUI);
+    });
+
+    if (form) {
+        form.addEventListener('submit', function (e) {
+            if (selectedPaymentMode() === 'paypal') {
+                e.preventDefault();
+
+                // Validate shipping first
+                if (!form.checkValidity()) {
+                    form.reportValidity();
+                    showPaypalError('Please complete the required shipping information before paying.');
+                    return;
+                }
+
+                paypalSectionOpened = true;
+                togglePaymentUI();
+
+                // Ensure PayPal section is visible then render buttons
+                if (paypalSection) {
+                    paypalSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+                renderPaypalButtonsSoon();
+            }
+        });
+    }
+
+    togglePaymentUI();
+
+    const buyNow = <?php echo $buy_now ? 'true' : 'false'; ?>;
+    const productId = <?php echo (int)($buy_now ? $product_id : 0); ?>;
+    const variationId = <?php echo $buy_now ? (is_null($variation_id) ? 'null' : (int)$variation_id) : 'null'; ?>;
+    const quantity = <?php echo (int)($buy_now ? $quantity : 0); ?>;
+
+    function collectShipping() {
+        const fields = ['first_name','last_name','email','phone','house_number','street','barangay','city','province','postal_code'];
+        const data = {};
+        fields.forEach(function (name) {
+            const el = document.querySelector('[name="' + name + '"]');
+            data[name] = el ? el.value : '';
+        });
+        return data;
+    }
+
+    function renderPaypalButtons() {
+        if (paypalRendered) return;
+
+        const container = document.getElementById('paypal-button-container');
+        if (!container) return;
+
+        // Must be visible before render
+        const isVisible = container.offsetParent !== null;
+        if (!isVisible) return;
+
+        const sdk = getPaypalSdk();
+        // SDK might still be loading; retry loop will handle it
+        if (!sdk || typeof sdk.Buttons !== 'function') return;
+
+        // Avoid duplicate renders
+        if (container.childElementCount > 0) {
+            paypalRendered = true;
+            return;
+        }
+
+        sdk.Buttons({
+            // Render PayPal button only (no card/credit buttons)
+            fundingSource: sdk.FUNDING && sdk.FUNDING.PAYPAL ? sdk.FUNDING.PAYPAL : undefined,
+            onClick: function (data, actions) {
+                if (selectedPaymentMode() !== 'paypal') {
+                    showPaypalError('Please select PayPal first.');
+                    return actions.reject();
+                }
+
+                if (form && !form.checkValidity()) {
+                    form.reportValidity();
+                    showPaypalError('Please complete the required shipping information before paying.');
+                    return actions.reject();
+                }
+
+                return actions.resolve();
+            },
+            createOrder: async function () {
+                try {
+                    if (paypalErrors) paypalErrors.style.display = 'none';
+                    const payload = {
+                        buy_now: buyNow,
+                        product_id: buyNow ? productId : null,
+                        variation_id: buyNow ? variationId : null,
+                        quantity: buyNow ? quantity : null
+                    };
+
+                    const resp = await fetch('paypal_create_order.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const json = await resp.json();
+                    if (!json.success) {
+                        showPaypalError(json.message || 'Failed to create PayPal order');
+                        throw new Error(json.message || 'Failed to create PayPal order');
+                    }
+                    return json.paypal_order_id;
+                } catch (e) {
+                    showPaypalError('PayPal could not start. Please try again.');
+                    throw e;
+                }
+            },
+            onApprove: async function (data) {
+                try {
+                    const resp = await fetch('paypal_capture_order.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            paypal_order_id: data.orderID,
+                            shipping: collectShipping()
+                        })
+                    });
+                    const json = await resp.json();
+                    if (!json.success) {
+                        showPaypalError(json.message || 'PayPal capture failed');
+                        return;
+                    }
+                    window.location.href = json.redirect_url;
+                } catch (e) {
+                    showPaypalError('PayPal payment could not be completed. Please try again.');
+                }
+            },
+            onError: function (err) {
+                showPaypalError('PayPal error occurred. Please try again.');
+            }
+        }).render('#paypal-button-container').then(function () {
+            paypalRendered = true;
+            setPaypalLoading(false);
+        }).catch(function (e) {
+            showPaypalError('PayPal could not be displayed. Please refresh and try again.');
+        });
+    }
+
+    function renderPaypalButtonsSoon() {
+        if (paypalRendered) return;
+        if (!paypalSectionOpened) return;
+
+        setPaypalLoading(true, 'Loading PayPal…');
+
+        let attempts = 0;
+        const maxAttempts = 60; // ~6 seconds
+
+        const tick = function () {
+            try {
+                attempts++;
+
+                const container = document.getElementById('paypal-button-container');
+                const containerVisible = !!(container && container.offsetParent !== null);
+                const sdk = getPaypalSdk();
+                const buttonsAvailable = !!(sdk && typeof sdk.Buttons === 'function');
+
+                setPaypalLoading(true, 'Loading PayPal…');
+
+                renderPaypalButtons();
+
+                if (paypalRendered) return;
+
+                if (attempts >= maxAttempts) {
+                    setPaypalLoading(false);
+                    showPaypalError('PayPal could not be initialized. Please refresh the page and try again.');
+                    return;
+                }
+
+                setTimeout(tick, 100);
+            } catch (e) {
+                setPaypalLoading(false);
+                showPaypalError('PayPal initialization crashed: ' + (e && e.message ? e.message : 'Unknown error'));
+            }
+        };
+
+        setTimeout(tick, 0);
+    }
+
+    // Initialize UI based on current selection
+    togglePaymentUI();
+});
+</script>
+
 <?php include 'includes/footer.php'; ?>

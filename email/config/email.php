@@ -148,6 +148,10 @@ function sendWelcomeEmail($email, $username) {
 function sendOrderConfirmationEmail($email, $orderData) {
     $subject = "Order Confirmation - Order #{$orderData['order_id']}";
 
+    $paymentMethodLabel = $orderData['payment_method']
+        ?? $orderData['payment_mode_name']
+        ?? 'Cash on Delivery (COD)';
+
     $orderItems = '';
     $total = 0;
 
@@ -218,7 +222,7 @@ function sendOrderConfirmationEmail($email, $orderData) {
                     <strong>Address:</strong> {$orderData['house_number']} {$orderData['street']}, {$orderData['barangay']}, {$orderData['city']}, {$orderData['province']} {$orderData['postal_code']}
                 </p>
 
-                <p><strong>Payment Method:</strong> Cash on Delivery (COD)</p>
+                <p><strong>Payment Method:</strong> {$paymentMethodLabel}</p>
                 <p><strong>Order Status:</strong> Pending</p>
 
                 <p>You will receive another email when your order ships. You can track your order status by logging into your account.</p>
