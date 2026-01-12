@@ -1,0 +1,145 @@
+/* Motoshapi chatbot widget (Ollama) */
+
+.ms-chatbot {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 1100;
+}
+
+.ms-chatbot-toggle {
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 999px;
+  border: 2px solid var(--border-primary);
+  background: var(--accent-primary);
+  color: var(--bg-primary);
+  box-shadow: var(--shadow-lg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform var(--transition-fast), opacity var(--transition-fast);
+}
+
+.ms-chatbot-toggle:hover {
+  transform: translateY(-1px);
+}
+
+.ms-chatbot-panel {
+  position: absolute;
+  right: 0;
+  bottom: 4.25rem;
+  width: min(360px, calc(100vw - 2rem));
+  height: min(520px, calc(100vh - 7rem));
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ms-chatbot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.ms-chatbot-title {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ms-chatbot-close {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.ms-chatbot-close:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-primary);
+}
+
+.ms-chatbot-messages {
+  flex: 1;
+  padding: var(--spacing-md);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.ms-chatbot-bubble {
+  max-width: 85%;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-primary);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ms-chatbot-bubble.user {
+  align-self: flex-end;
+  background: var(--bg-tertiary);
+}
+
+.ms-chatbot-bubble.assistant {
+  align-self: flex-start;
+}
+
+.ms-chatbot-form {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border-top: 1px solid var(--border-primary);
+}
+
+.ms-chatbot-input {
+  flex: 1;
+  border: 2px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: 0.6rem 0.75rem;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.ms-chatbot-input:focus {
+  border-color: var(--border-secondary);
+  box-shadow: var(--shadow-accent);
+}
+
+.ms-chatbot-send {
+  border: 2px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--accent-primary);
+  color: var(--bg-primary);
+  padding: 0.6rem 0.9rem;
+  font-weight: 700;
+}
+
+.ms-chatbot-send:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .ms-chatbot {
+    right: 0.75rem;
+    bottom: 0.75rem;
+  }
+}
