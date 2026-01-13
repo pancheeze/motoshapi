@@ -9,13 +9,22 @@ require_once 'config/database.php';
 require_once 'config/currency.php';
 require_once 'config/paypal_config.php';
 require_once 'includes/sms_helper.php';
+require_once 'email/vendor/autoload.php';
+require_once 'email/config/email.php';
 
 // Fetch user data for auto-fill
 $user_data = [];
 if (isset($_SESSION['user_id'])) {
-    $user_stmt = $conn->prepare('SELECT email, phone FROM users WHERE id = ?');
+    $user_stmt = $conn->prepare('SELECT username, email, phone FROM users WHERE id = ?');
     $user_stmt->execute([$_SESSION['user_id']]);
     $user_data = $user_stmt->fetch(PDO::FETCH_ASSOC);
+    
+    // Split username into first/last name (or use username for both if no space)
+    if (!empty($user_data['username'])) {
+        $name_parts = explode(' ', $user_data['username'], 2);
+        $user_data['first_name'] = $name_parts[0];
+        $user_data['last_name'] = isset($name_parts[1]) ? $name_parts[1] : $name_parts[0];
+    }
 }
 
 $buy_now = isset($_GET['buy_now']) && $_GET['buy_now'] == 1;
@@ -159,6 +168,89 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
             // SMS is sent but doesn't block order completion if it fails
         }
         
+        // Send Email confirmation to customer
+        if (!empty($_POST['email'])) {
+            $customer_name = trim($_POST['first_name'] . ' ' . $_POST['last_name']);
+            $customer_email = $_POST['email'];
+            
+            error_log("[CHECKOUT EMAIL] Attempting to send order confirmation to: {$customer_email}");
+            
+            // Build order items HTML
+            $items_html = '';
+            foreach ($checkout_items as $item) {
+                $item_total = $item['price'] * $item['quantity'];
+                $items_html .= "<tr>
+                    <td style='padding: 10px; border-bottom: 1px solid #ddd;'>" . htmlspecialchars($item['name']) . "</td>
+                    <td style='padding: 10px; border-bottom: 1px solid #ddd; text-align: center;'>" . $item['quantity'] . "</td>
+                    <td style='padding: 10px; border-bottom: 1px solid #ddd; text-align: right;'>" . format_price($item['price']) . "</td>
+                    <td style='padding: 10px; border-bottom: 1px solid #ddd; text-align: right;'>" . format_price($item_total) . "</td>
+                </tr>";
+            }
+            
+            $email_subject = "Order Confirmation #" . $order_id . " - MOTOSHAPI";
+            $email_body = "
+            <html>
+            <body style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;'>
+                <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;'>
+                    <h1 style='color: white; margin: 0;'>Order Confirmed!</h1>
+                </div>
+                <div style='background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;'>
+                    <p style='font-size: 16px; color: #333;'>Hello <strong>" . htmlspecialchars($customer_name) . "</strong>,</p>
+                    <p style='font-size: 16px; color: #333;'>Thank you for your order! We've received your order and will process it soon.</p>
+                    
+                    <div style='background: white; padding: 20px; border-radius: 8px; margin: 20px 0;'>
+                        <h3 style='color: #667eea; margin-top: 0;'>Order Details</h3>
+                        <p><strong>Order Number:</strong> #" . $order_id . "</p>
+                        <p><strong>Order Date:</strong> " . date('F j, Y, g:i A') . "</p>
+                        <p><strong>Payment Method:</strong> " . htmlspecialchars($payment_mode_name) . "</p>
+                    </div>
+                    
+                    <h3 style='color: #667eea;'>Order Items</h3>
+                    <table style='width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden;'>
+                        <thead>
+                            <tr style='background: #667eea; color: white;'>
+                                <th style='padding: 10px; text-align: left;'>Product</th>
+                                <th style='padding: 10px; text-align: center;'>Qty</th>
+                                <th style='padding: 10px; text-align: right;'>Price</th>
+                                <th style='padding: 10px; text-align: right;'>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            " . $items_html . "
+                        </tbody>
+                        <tfoot>
+                            <tr style='background: #f8f9fa; font-weight: bold;'>
+                                <td colspan='3' style='padding: 15px; text-align: right;'>Total Amount:</td>
+                                <td style='padding: 15px; text-align: right; color: #667eea; font-size: 18px;'>" . format_price($total) . "</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    
+                    <div style='background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 20px 0;'>
+                        <p style='margin: 0; color: #1976d2;'><strong>📦 What's Next?</strong></p>
+                        <p style='margin: 5px 0 0 0;'>We'll notify you via SMS and email when your order is processed and shipped.</p>
+                    </div>
+                    
+                    <p style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #999; font-size: 12px;'>
+                        This is an automated email from MOTOSHAPI. Please do not reply to this email.
+                    </p>
+                </div>
+            </body>
+            </html>
+            ";
+            
+            try {
+                $email_result = sendEmail($customer_email, $email_subject, $email_body);
+                if ($email_result) {
+                    error_log("[CHECKOUT EMAIL] Successfully sent order confirmation to: {$customer_email}");
+                } else {
+                    error_log("[CHECKOUT EMAIL] Failed to send order confirmation to: {$customer_email}");
+                }
+            } catch (Exception $e) {
+                error_log("[CHECKOUT EMAIL] Error sending order confirmation: " . $e->getMessage());
+            }
+        }
+        
         if (!$buy_now) {
             unset($_SESSION['cart']);
         }
@@ -211,11 +303,11 @@ include 'includes/header.php';
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="first_name" class="form-label" style="display: block; margin-bottom: var(--spacing-sm); font-weight: 600; color: var(--text-primary);">First Name</label>
-                            <input type="text" class="form-control" id="first_name" name="first_name" required style="background: var(--bg-primary); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: var(--radius-md); width: 100%;">
+                            <input type="text" class="form-control" id="first_name" name="first_name" value="<?php echo htmlspecialchars($user_data['first_name'] ?? ''); ?>" required style="background: var(--bg-primary); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: var(--radius-md); width: 100%;">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="last_name" class="form-label" style="display: block; margin-bottom: var(--spacing-sm); font-weight: 600; color: var(--text-primary);">Last Name</label>
-                            <input type="text" class="form-control" id="last_name" name="last_name" required style="background: var(--bg-primary); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: var(--radius-md); width: 100%;">
+                            <input type="text" class="form-control" id="last_name" name="last_name" value="<?php echo htmlspecialchars($user_data['last_name'] ?? ''); ?>" required style="background: var(--bg-primary); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: var(--radius-md); width: 100%;">
                         </div>
                     </div>
                     <div class="row">

@@ -12,11 +12,14 @@ $user_id = $_SESSION['user_id'];
 
 // Handle order received action
 if (isset($_POST['order_received']) && isset($_POST['order_id'])) {
+    require_once 'email/vendor/autoload.php';
+    require_once 'email/config/email.php';
+    
     $order_id = intval($_POST['order_id']);
     
-    // Get order details and phone number
+    // Get order details, phone number AND email
     $stmt = $conn->prepare('
-        SELECT o.*, s.phone 
+        SELECT o.*, s.phone, s.email 
         FROM orders o 
         LEFT JOIN shipping_information s ON o.id = s.order_id 
         WHERE o.id = ? AND o.user_id = ?
@@ -28,6 +31,28 @@ if (isset($_POST['order_received']) && isset($_POST['order_id'])) {
         // Update order status to delivered
         $stmt = $conn->prepare('UPDATE orders SET status = "delivered" WHERE id = ? AND user_id = ?');
         $stmt->execute([$order_id, $user_id]);
+        
+        // Send EMAIL confirmation
+        if (!empty($order['email'])) {
+            error_log("[ORDER RECEIVED] Customer marked order #{$order_id} as received. Sending email to: {$order['email']}");
+            $orderData = [
+                'order_id' => $order['id'],
+                'customer_name' => trim(($order['first_name'] ?? '') . ' ' . ($order['last_name'] ?? '')),
+                'status' => 'delivered'
+            ];
+            try {
+                $email_result = sendOrderStatusUpdateEmail($order['email'], $orderData);
+                if ($email_result) {
+                    error_log("[ORDER RECEIVED] Successfully sent delivery confirmation email to: {$order['email']}");
+                } else {
+                    error_log("[ORDER RECEIVED] Failed to send delivery confirmation email to: {$order['email']}");
+                }
+            } catch (Exception $e) {
+                error_log("[ORDER RECEIVED] Error sending delivery confirmation email: " . $e->getMessage());
+            }
+        } else {
+            error_log("[ORDER RECEIVED] No email found for order #{$order_id}");
+        }
         
         // Send SMS confirmation to customer that their order receipt was confirmed
         if (!empty($order['phone'])) {

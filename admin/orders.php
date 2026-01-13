@@ -14,12 +14,13 @@ if(!isset($_SESSION['admin_id'])) {
 
 // Handle order status update
 if(isset($_POST['update_status']) && isset($_POST['order_id']) && isset($_POST['new_status'])) {
+    error_log("[ORDER STATUS DEBUG] Status update triggered - Order ID: {$_POST['order_id']}, New Status: {$_POST['new_status']}");
     $order_id = intval($_POST['order_id']);
     $new_status = $_POST['new_status'];
     
     // Get order and customer phone number before updating
     $stmt = $conn->prepare("
-        SELECT o.*, s.phone 
+        SELECT o.*, s.phone, s.email 
         FROM orders o 
         LEFT JOIN shipping_information s ON o.id = s.order_id 
         WHERE o.id = ?
@@ -38,7 +39,19 @@ if(isset($_POST['update_status']) && isset($_POST['order_id']) && isset($_POST['
             'customer_name' => trim(($order['first_name'] ?? '') . ' ' . ($order['last_name'] ?? '')) ?: $order['username'],
             'status' => $new_status
         ];
-        sendOrderStatusUpdateEmail($order['email'], $orderData);
+        error_log("[ORDER STATUS] Attempting to send status update email to: {$order['email']} for order #{$order['id']} - Status: {$new_status}");
+        try {
+            $email_result = sendOrderStatusUpdateEmail($order['email'], $orderData);
+            if ($email_result) {
+                error_log("[ORDER STATUS] Successfully sent status update email to: {$order['email']}");
+            } else {
+                error_log("[ORDER STATUS] Failed to send status update email to: {$order['email']}");
+            }
+        } catch (Exception $e) {
+            error_log("[ORDER STATUS] Error sending status update email: " . $e->getMessage());
+        }
+    } else {
+        error_log("[ORDER STATUS] Email NOT sent - Order: " . ($order ? "found" : "not found") . ", Email: " . (isset($order['email']) ? "'{$order['email']}'" : "empty/null"));
     }
     
     // Send SMS notification based on status (only if valid phone number)

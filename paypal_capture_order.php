@@ -190,6 +190,110 @@ try {
 
     $conn->commit();
 
+    // Send Email confirmation to customer
+    if (!empty($shipping['email'])) {
+        require_once 'email/vendor/autoload.php';
+        require_once 'email/config/email.php';
+        
+        $customer_name = trim($shipping['first_name'] . ' ' . $shipping['last_name']);
+        $customer_email = $shipping['email'];
+        
+        error_log("[PAYPAL EMAIL] Attempting to send order confirmation to: {$customer_email}");
+        
+        // Build order items HTML
+        $items_html = '';
+        foreach ($checkout_items as $item) {
+            $item_total = $item['price'] * $item['quantity'];
+            $items_html .= "<tr>
+                <td>" . htmlspecialchars($item['name']) . "</td>
+                <td style='text-align: center;'>" . $item['quantity'] . "</td>
+                <td style='text-align: right;'>" . format_price($item['price']) . "</td>
+                <td style='text-align: right;'>" . format_price($item_total) . "</td>
+            </tr>";
+        }
+        
+        $email_subject = "Order Confirmation #" . $order_id . " - MOTOSHAPI";
+        $email_body = "
+        <html>
+        <head>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; }
+                .header h1 { color: white; margin: 0; }
+                .content { padding: 30px; background: #f8f9fa; }
+                table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+                th { background: #667eea; color: white; }
+                .total { font-size: 18px; font-weight: bold; color: #667eea; }
+                .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+            </style>
+        </head>
+        <body>
+            <div class='header'>
+                <h1>✅ Order Confirmed!</h1>
+            </div>
+            <div class='content'>
+                <p>Hi <strong>{$customer_name}</strong>,</p>
+                <p>Thank you for your order! Your payment via <strong>PayPal</strong> has been received.</p>
+                
+                <h3>Order Details:</h3>
+                <p><strong>Order Number:</strong> #{$order_id}<br>
+                <strong>Order Date:</strong> " . date('F j, Y, g:i a') . "<br>
+                <strong>Payment Method:</strong> PayPal</p>
+                
+                <h3>Items Ordered:</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th style='text-align: center;'>Quantity</th>
+                            <th style='text-align: right;'>Price</th>
+                            <th style='text-align: right;'>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {$items_html}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan='3' style='text-align: right; padding-top: 20px;'><strong>Total Amount:</strong></td>
+                            <td style='text-align: right; padding-top: 20px;' class='total'>" . format_price($expectedTotal) . "</td>
+                        </tr>
+                    </tfoot>
+                </table>
+                
+                <div style='background: #e8f4fd; border-left: 4px solid #667eea; padding: 15px; margin-top: 20px;'>
+                    <h4 style='margin-top: 0;'>What's Next?</h4>
+                    <p style='margin-bottom: 0;'>We're preparing your order for shipment. You'll receive another email when your order ships with tracking information.</p>
+                </div>
+            </div>
+            <div class='footer'>
+                <p>Thank you for shopping with MOTOSHAPI!<br>
+                Questions? Contact us at buycyclebikeparts@gmail.com</p>
+            </div>
+        </body>
+        </html>
+        ";
+        
+        try {
+            $email_result = sendEmail($customer_email, $email_subject, $email_body);
+            if ($email_result) {
+                error_log("[PAYPAL EMAIL] Successfully sent order confirmation to: {$customer_email}");
+            } else {
+                error_log("[PAYPAL EMAIL] Failed to send order confirmation to: {$customer_email}");
+            }
+        } catch (Exception $e) {
+            error_log("[PAYPAL EMAIL] Error sending order confirmation: " . $e->getMessage());
+        }
+    }
+    
+    // Send SMS notification to customer
+    if (!empty($shipping['phone'])) {
+        require_once 'includes/sms_helper.php';
+        $smsResult = sendOrderPlacedSMS($shipping['phone'], $order_id, $expectedTotal);
+        // SMS is sent but doesn't block order completion if it fails
+    }
+
     if (!$buy_now) {
         unset($_SESSION['cart']);
     }

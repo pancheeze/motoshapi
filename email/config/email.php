@@ -54,6 +54,7 @@ function sendEmail($to, $subject, $body, $altBody = '') {
 
     try {
         // Server settings
+        $mail->SMTPDebug = 0; // Disable debug output (0 = off, 1 = client, 2 = client+server)
         $mail->isSMTP();
         $mail->Host = SMTP_HOST;
         $mail->SMTPAuth = true;
