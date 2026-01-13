@@ -124,7 +124,7 @@ INSERT INTO `orders` (`id`, `user_id`, `first_name`, `last_name`, `total_amount`
 (15, 4, 'Marc Angelo', 'Canillas', 25500.00, 'delivered', 'online', 1, NULL, '2025-06-18 14:01:49', '2025-06-18 14:01:49'),
 (29, 4, 'Marc Angelo', 'Canillas', 950.00, 'pending', 'online', 2, '[]', '2025-06-19 03:22:29', '2025-06-19 03:22:29'),
 (30, 4, 'Marc Angelo', 'Canillas', 8250.00, 'pending', 'online', 1, '[]', '2025-06-19 04:25:45', '2025-06-19 04:25:45'),
-(31, 4, 'Marc Angelo', 'Canillas', 22600.00, 'pending', 'online', 2, '[]', '2025-06-20 04:26:55', '2025-06-20 04:26:55'),
+(31, 4, 'Marc Angelo', 'Canillas', 22600.00, 'pending', 'online', 3, '[]', '2025-06-20 04:26:55', '2025-06-20 04:26:55'),
 (32, 4, 'Marc Angelo', 'Canillas', 950.00, 'pending', 'online', 2, '[]', '2025-06-20 05:11:50', '2025-06-20 05:11:50'),
 (33, 4, 'Marc Angelo', 'Canillas', 22000.00, 'pending', 'online', 2, '[]', '2025-06-20 06:27:07', '2025-06-20 06:27:07'),
 (34, 4, 'Marc Angelo', 'Canillas', 19550.00, 'pending', 'online', 2, '[]', '2025-06-20 12:33:54', '2025-06-20 12:33:54'),
@@ -187,7 +187,9 @@ CREATE TABLE `payment_modes` (
 
 INSERT INTO `payment_modes` (`id`, `mode_name`, `mode_code`, `is_active`, `created_at`) VALUES
 (1, 'Cash on Delivery (COD)', 'cod', 1, '2025-06-18 14:51:27'),
-(2, 'PayPal', 'paypal', 1, '2025-06-18 14:51:27');
+(2, 'GCash', 'gcash', 1, '2025-06-18 14:51:27'),
+(3, 'PayMaya', 'paymaya', 1, '2025-06-18 14:51:27');
+
 
 -- --------------------------------------------------------
 
