@@ -19,7 +19,7 @@ marc123
 - Product catalog with categories
 - Shopping cart functionality
 - Admin panel for inventory management
-- Payment processing (COD only)
+- Payment processing (COD + PayPal)
 - Order management system
 - Responsive design
 - Product variations support

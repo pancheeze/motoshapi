@@ -9,7 +9,7 @@ if (!isset($_SESSION['admin_id'])) {
     exit();
 }
 
-// No additional payment settings needed for COD-only system
+// Payment methods are managed via payment_modes; this setup supports COD and PayPal.
 ?>
 
 <!DOCTYPE html>
@@ -28,8 +28,9 @@ if (!isset($_SESSION['admin_id'])) {
         <h2>Payment Settings</h2>
         
         <div class="alert alert-info">
-            <h5>Cash on Delivery (COD)</h5>
-            <p>The system is currently configured to accept Cash on Delivery payments only. Customers will pay when their order is delivered.</p>
+            <h5>Cash on Delivery (COD) + PayPal</h5>
+            <p>The system supports Cash on Delivery and PayPal. COD is paid on delivery, while PayPal payments are captured online during checkout.</p>
+            <p class="mb-0"><strong>Note:</strong> Configure PayPal credentials in <code>config/paypal_config.php</code> for the PayPal button to work.</p>
         </div>
     </div>
 
