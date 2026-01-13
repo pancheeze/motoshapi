@@ -22,7 +22,7 @@ $total_orders = $stmt->fetch()['total_orders'];
 $stmt = $conn->query("SELECT COUNT(*) as total_users FROM users");
 $total_users = $stmt->fetch()['total_users'];
 
-// Payment settings removed - COD only system
+// Payment settings page is informational; supported methods are COD + PayPal
 
 $title = 'Admin Dashboard - Motoshapi';
 $activeAdminPage = 'dashboard';

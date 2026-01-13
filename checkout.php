@@ -281,7 +281,7 @@ include 'includes/header.php';
                     </div>
 
                     <div id="paypal-section" class="mb-4" style="display:none; background: var(--bg-primary); border: 1px solid var(--border-primary); padding: var(--spacing-lg); border-radius: var(--radius-md);">
-                        <?php if (defined('PAYPAL_CLIENT_ID') && PAYPAL_CLIENT_ID !== '' && PAYPAL_CLIENT_ID !== 'YOUR_SANDBOX_CLIENT_ID_HERE'): ?>
+                        <?php if (defined('PAYPAL_CLIENT_ID') && PAYPAL_CLIENT_ID !== '' && PAYPAL_CLIENT_ID !== 'client_id_here' && PAYPAL_CLIENT_ID !== 'YOUR_SANDBOX_CLIENT_ID_HERE'): ?>
                             <div id="paypal-errors" style="display:none; background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); color: var(--danger); padding: var(--spacing-md); border-radius: var(--radius-md); margin-bottom: var(--spacing-md);"></div>
                             <div id="paypal-loading" style="display:none; background: rgba(30, 64, 175, 0.08); border: 1px solid rgba(30, 64, 175, 0.25); color: var(--text-primary); padding: var(--spacing-md); border-radius: var(--radius-md); margin-bottom: var(--spacing-md);">
                                 Loading PayPal…
@@ -324,7 +324,7 @@ include 'includes/header.php';
     </div>
 </div>
 
-<?php if (defined('PAYPAL_CLIENT_ID') && PAYPAL_CLIENT_ID !== '' && PAYPAL_CLIENT_ID !== 'YOUR_SANDBOX_CLIENT_ID_HERE'): ?>
+<?php if (defined('PAYPAL_CLIENT_ID') && PAYPAL_CLIENT_ID !== '' && PAYPAL_CLIENT_ID !== 'client_id_here' && PAYPAL_CLIENT_ID !== 'YOUR_SANDBOX_CLIENT_ID_HERE'): ?>
     <script
         id="paypal-sdk"
         data-namespace="paypalSdk"

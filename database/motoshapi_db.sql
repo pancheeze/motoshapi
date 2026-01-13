@@ -117,8 +117,17 @@ CREATE TABLE `orders` (
 --
 
 INSERT INTO `orders` (`id`, `user_id`, `first_name`, `last_name`, `total_amount`, `status`, `transaction_type`, `payment_mode_id`, `payment_details`, `created_at`, `updated_at`) VALUES
+(11, NULL, NULL, NULL, 7500.00, 'pending', 'online', 1, '[]', '2025-06-13 11:17:28', '2025-06-13 11:17:28'),
+(12, NULL, NULL, NULL, 6000.00, 'pending', 'online', 1, '[]', '2025-06-13 11:22:00', '2025-06-13 11:22:00'),
+(13, NULL, NULL, NULL, 750.00, 'pending', 'online', 1, '[]', '2025-06-13 11:22:43', '2025-06-13 11:22:43'),
 (14, 4, 'joki', 'banks', 13000.00, 'delivered', 'online', 1, NULL, '2025-06-13 11:32:21', '2025-06-13 11:32:21'),
 (15, 4, 'Marc Angelo', 'Canillas', 25500.00, 'delivered', 'online', 1, NULL, '2025-06-18 14:01:49', '2025-06-18 14:01:49'),
+(29, 4, 'Marc Angelo', 'Canillas', 950.00, 'pending', 'online', 2, '[]', '2025-06-19 03:22:29', '2025-06-19 03:22:29'),
+(30, 4, 'Marc Angelo', 'Canillas', 8250.00, 'pending', 'online', 1, '[]', '2025-06-19 04:25:45', '2025-06-19 04:25:45'),
+(31, 4, 'Marc Angelo', 'Canillas', 22600.00, 'pending', 'online', 2, '[]', '2025-06-20 04:26:55', '2025-06-20 04:26:55'),
+(32, 4, 'Marc Angelo', 'Canillas', 950.00, 'pending', 'online', 2, '[]', '2025-06-20 05:11:50', '2025-06-20 05:11:50'),
+(33, 4, 'Marc Angelo', 'Canillas', 22000.00, 'pending', 'online', 2, '[]', '2025-06-20 06:27:07', '2025-06-20 06:27:07'),
+(34, 4, 'Marc Angelo', 'Canillas', 19550.00, 'pending', 'online', 2, '[]', '2025-06-20 12:33:54', '2025-06-20 12:33:54'),
 (35, 3, 'Marc Angelo', 'Canillas', 600.00, 'pending', 'online', 1, '[]', '2025-06-20 12:34:26', '2025-06-20 12:34:26');
 
 -- --------------------------------------------------------
@@ -177,7 +186,8 @@ CREATE TABLE `payment_modes` (
 --
 
 INSERT INTO `payment_modes` (`id`, `mode_name`, `mode_code`, `is_active`, `created_at`) VALUES
-(1, 'Cash on Delivery (COD)', 'cod', 1, '2025-06-18 14:51:27');
+(1, 'Cash on Delivery (COD)', 'cod', 1, '2025-06-18 14:51:27'),
+(2, 'PayPal', 'paypal', 1, '2025-06-18 14:51:27');
 
 -- --------------------------------------------------------
 
@@ -193,7 +203,7 @@ CREATE TABLE `payment_settings` (
 -- Dumping data for table `payment_settings`
 --
 
--- No payment settings needed for COD-only system
+-- No payment settings needed for COD + PayPal system
 
 -- --------------------------------------------------------
 
@@ -260,7 +270,7 @@ INSERT INTO `shipping_information` (`id`, `order_id`, `first_name`, `last_name`,
 (9, 14, 'joki', 'banks', 'muryel@gmail.com', '09123456788', '111', 'zone 1', 'bunggo', 'calamba', 'laguna', '4027', 1, '2025-06-13 11:32:21'),
 (10, 15, 'Marc Angelo', 'Canillas', 'canillasmarc04@gmail.com', '09163910082', '123', 'qwase', 'bungooopA', 'Calamba, City of', 'Laguna', '4027', 1, '2025-06-18 14:01:49'),
 (17, 29, 'Marc Angelo', 'Canillas', 'canillasmarc04@gmail.com', '09163910082', '3123', 'asf', 'bungooopA', 'Calamba, City of', 'Laguna', '4027', 2, '2025-06-19 03:22:29'),
-(18, 31, 'Marc Angelo', 'Canillas', 'canillasmarc04@gmail.com', '09163910082', '123', 'gsfgshfhj', 'bungoo', 'Calamba, City of', 'Laguna', '4027', 3, '2025-06-20 04:26:55'),
+(18, 31, 'Marc Angelo', 'Canillas', 'canillasmarc04@gmail.com', '09163910082', '123', 'gsfgshfhj', 'bungoo', 'Calamba, City of', 'Laguna', '4027', 2, '2025-06-20 04:26:55'),
 (19, 32, 'Marc Angelo', 'Canillas', 'canillasmarc04@gmail.com', '09163910082', '123', 'gsfgshfhj', 'bungoo', 'Calamba, City of', 'Laguna', '4027', 2, '2025-06-20 05:11:50'),
 (20, 33, 'Marc Angelo', 'Canillas', 'canillasmarc04@gmail.com', '09163910082', '3123', 'asf', 'asd', 'Calamba, City of', 'Laguna', '4027', 2, '2025-06-20 06:27:07'),
 (21, 34, 'Marc Angelo', 'Canillas', 'canillasmarc04@gmail.com', '09163910082', '3123', 'asf', 'asd', 'Calamba, City of', 'Laguna', '4027', 2, '2025-06-20 12:33:54'),
@@ -442,7 +452,7 @@ ALTER TABLE `order_items`
 -- AUTO_INCREMENT for table `payment_modes`
 --
 ALTER TABLE `payment_modes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `payment_settings`

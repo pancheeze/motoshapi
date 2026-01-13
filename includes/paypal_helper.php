@@ -12,7 +12,9 @@ function paypal_is_configured(): bool {
         && PAYPAL_CLIENT_ID !== ''
         && PAYPAL_CLIENT_SECRET !== ''
         && PAYPAL_CLIENT_ID !== 'YOUR_SANDBOX_CLIENT_ID_HERE'
-        && PAYPAL_CLIENT_SECRET !== 'YOUR_SANDBOX_CLIENT_SECRET_HERE';
+        && PAYPAL_CLIENT_SECRET !== 'YOUR_SANDBOX_CLIENT_SECRET_HERE'
+        && PAYPAL_CLIENT_ID !== 'client_id_here'
+        && PAYPAL_CLIENT_SECRET !== 'client_secret_here';
 }
 
 function paypal_http_request(string $method, string $url, array $headers = [], ?string $body = null): array {
@@ -22,7 +24,7 @@ function paypal_http_request(string $method, string $url, array $headers = [], ?
     curl_setopt($ch, CURLOPT_HEADER, true);
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
     curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-    if (defined('PAYPAL_VERIFY_SSL') && PAYPAL_VERIFY_SSL === false) {
+    if (defined('PAYPAL_VERIFY_SSL') && constant('PAYPAL_VERIFY_SSL') === false) {
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
     }
